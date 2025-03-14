@@ -1,29 +1,20 @@
 package com.example.demo.entity;
 
-
+import jakarta.persistence.*;
 import lombok.*;
 
-import jakarta.persistence.*;
-
 @Entity
-@Table(name= "tbl_memo")
+@Table(name="tbl_memo")
 @ToString
-@NoArgsConstructor
+@Builder
 @AllArgsConstructor
-@Builder // ✅ 추가
-@Getter
-
-
+@NoArgsConstructor
 public class Memo {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "mno")
+    @GeneratedValue(strategy= GenerationType.IDENTITY)
     private Long mno;
 
-    @Column(name = "memo_text", nullable = false) // ✅ 새로운 필드 추가
+    @Column(length=200, nullable=false)
     private String memoText;
-
-    public void setMemoText(String updateText) {
-    }
 }

@@ -1,10 +1,16 @@
 package com.example.demo.repository;
 
-import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.annotation.Commit;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.entity.Memo;
+
 import java.util.Optional;
 import java.util.stream.IntStream;
 
@@ -15,14 +21,13 @@ public class MemoRepositoryTests {
     MemoRepository memoRepository;
 
     @Test
-    public void testClass(){
+    public void testClass() {
         System.out.println(memoRepository.getClass().getName());
     }
 
-    // 더미 데이터 100개 삽입
     @Test
     public void testInsertDummies() {
-        IntStream.rangeClosed(1,100).forEach(i->{
+        IntStream.rangeClosed(1, 100).forEach(i -> {
             Memo memo = Memo.builder().memoText("Sample..." + i).build();
             memoRepository.save(memo);
         });
@@ -30,65 +35,80 @@ public class MemoRepositoryTests {
 
     @Test
     public void testSelect() {
-        Optional<Memo> result = memoRepository.findById(getLastMno());
+        Long mno = 100L;
 
-        System.out.println("==================================");
+        Optional<Memo> result = memoRepository.findById(mno);
+        System.out.println("========================");
 
-        if(result.isPresent()) {
+        if (result.isPresent()) {
             Memo memo = result.get();
             System.out.println(memo);
-        } else {
-            System.out.println("Memo not found.");
         }
     }
 
     @Transactional
     @Test
     public void testSelect2() {
-        Long mno = getLastMno(); // 마지막 ID 가져오기
+        Long mno = 99L;
 
-        Memo memo = memoRepository.findById(mno)
-                .orElseThrow(() -> new RuntimeException("Memo with ID " + mno + " not found."));
-
-        System.out.println("===============================");
+        Memo memo = memoRepository.getOne(mno);
+        System.out.println("==========================");
         System.out.println(memo);
     }
 
-    @Transactional
     @Test
     public void testUpdate() {
-        Long mno = getLastMno(); // 존재하는 가장 큰 ID 가져오기
+        Memo memo = Memo.builder().mno(99L).memoText("Update Text").build();
+        System.out.println(memoRepository.save(memo));
+    }
 
-        Optional<Memo> result = memoRepository.findById(mno);
-        if(result.isPresent()) {
-            Memo memo = result.get();
-            memo.setMemoText("Update Text");
-            memoRepository.save(memo);
-            System.out.println("Updated Memo: " + memo);
-        } else {
-            System.out.println("Memo not found.");
+    @Test
+    public void testDelete(){
+        Long mno = 100L;
+
+        memoRepository.deleteById(mno);
+    }
+
+    @Test
+    public void testPageDefault() {
+        Pageable pageable = PageRequest.of(1, 10);
+        Page<Memo> result = memoRepository.findAll(pageable);
+        System.out.println(result);
+        System.out.println("-------------------------");
+        System.out.println("Total Pages: " + result.getTotalPages());
+        System.out.println("Total Count : " + result.getTotalElements());
+        System.out.println("Page Number : " + result.getNumber());
+        System.out.println("Page Size : " + result.getSize());
+        System.out.println("hash next page? : " + result.hasNext());
+        System.out.println("first page? : " + result.isFirst());
+        System.out.println("-------------------------");
+        for(Memo memo : result.getContent()) {
+            System.out.println(memo);
         }
     }
 
+    @Test
+    public void testSort() {
+        Sort sort1 = Sort.by("mno").descending();
+        Pageable pageable = PageRequest.of(0, 10, sort1);
+        Page<Memo> result = memoRepository.findAll(pageable);
+
+        result.get().forEach(memo->{
+            System.out.println(memo);
+        });
+    }
+
+    @Test
+    public void testQueryMethodWithPageable() {
+        Pageable pageable = PageRequest.of(1, 10, Sort.by("mno").descending());
+        Page<Memo> result = memoRepository.findByMnoBetween(10L, 50L, pageable);
+        result.get().forEach(memo->System.out.println(memo));
+    }
+
+    @Commit
     @Transactional
     @Test
-    public void testDelete() {
-        Long mno = getLastMno(); // 존재하는 마지막 ID 가져오기
-
-        if(memoRepository.existsById(mno)) {
-            memoRepository.deleteById(mno);
-            System.out.println("Deleted Memo with ID " + mno);
-        } else {
-            System.out.println("Memo not found.");
-        }
-    }
-
-    /**
-     * 📌 현재 가장 마지막 `mno`를 조회하는 메서드
-     */
-    private Long getLastMno() {
-        return memoRepository.findTopByOrderByMnoDesc()
-                .map(Memo::getMno)
-                .orElseThrow(() -> new RuntimeException("No Memo exists in DB"));
+    public void testDeleteQueryMethods() {
+        memoRepository.deleteMemoByMnoLessThan(10L);
     }
 }
